@@ -332,7 +332,7 @@ static DEFINE_PER_CPU(unsigned long, min_freq_scale);
 
 static void
 scale_freq_capacity(const cpumask_t *cpus, unsigned long cur_freq,
-		    unsigned long max_freq)
+		   unsigned long max_freq)
 {
 	unsigned long scale = (cur_freq << SCHED_CAPACITY_SHIFT) / max_freq;
 	int cpu;
@@ -406,6 +406,13 @@ unsigned long cpufreq_scale_min_freq_capacity(struct sched_domain *sd, int cpu)
 {
 	return per_cpu(min_freq_scale, cpu);
 }
+
+void arch_set_freq_scale(const cpumask_t *cpus, unsigned long cur_freq,
+			 unsigned long max_freq)
+{
+	scale_freq_capacity(cpus, cur_freq, max_freq);
+}
+EXPORT_SYMBOL_GPL(arch_set_freq_scale);
 
 static void __cpufreq_notify_transition(struct cpufreq_policy *policy,
 		struct cpufreq_freqs *freqs, unsigned int state)
