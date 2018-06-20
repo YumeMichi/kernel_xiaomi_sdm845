@@ -7505,9 +7505,9 @@ task_is_boosted(struct task_struct *p) {
  * to run on any cpu.
  */
 static inline bool
-cpu_is_in_target_set(struct task_struct *p, int cpu)
+cpu_is_in_target_set(struct task_struct *p, int cpu, struct cpumask *rtg_target)
 {
-	int first_cpu = start_cpu(task_is_boosted(p));
+	int first_cpu = start_cpu(p, task_is_boosted(p), rtg_target);
 	int next_usable_cpu = cpumask_next(first_cpu - 1, tsk_cpus_allowed(p));
 	return cpu >= next_usable_cpu || next_usable_cpu >= nr_cpu_ids;
 }
@@ -7526,7 +7526,7 @@ bias_to_prev_cpu(struct task_struct *p, struct cpumask *rtg_target)
 	u64 ms = sched_clock();
 #endif
 
-	if (!cpu_is_in_target_set(p, prev_cpu)) {
+	if (!cpu_is_in_target_set(p, prev_cpu, rtg_target)) {
 		return false;
 	}
 
@@ -7585,7 +7585,8 @@ enum fastpaths {
 	PREV_CPU_BIAS,
 };
 
-static int select_energy_cpu_brute(struct task_struct *p, int prev_cpu)
+static int select_energy_cpu_brute(struct task_struct *p, int prev_cpu,
+				   int sync_boost)
 {
 	bool boosted, prefer_idle;
 	struct sched_domain *sd;
@@ -7638,8 +7639,8 @@ static int select_energy_cpu_brute(struct task_struct *p, int prev_cpu)
 	sync_entity_load_avg(&p->se);
 
 	/* Find a cpu with sufficient capacity */
-	next_cpu = find_best_target(p, &backup_cpu, boosted, prefer_idle,
-				    &fbt_env);
+	next_cpu = find_best_target(p, &backup_cpu, boosted || sync_boost,
+				    prefer_idle, &fbt_env);
 	if (next_cpu == -1) {
 		target_cpu = prev_cpu;
 		goto unlock;
@@ -7751,7 +7752,7 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 
 			if (sysctl_sched_sync_hint_enable && sync &&
 			    !_wake_cap && about_to_idle &&
-			    cpu_is_in_target_set(p, cpu))
+			    cpu_is_in_target_set(p, cpu, NULL))
 				return cpu;
 		}
 
@@ -7760,8 +7761,18 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 			cpumask_test_cpu(cpu, tsk_cpus_allowed(p)));
 	}
 
-	if (energy_aware())
-		return select_energy_cpu_brute(p, prev_cpu);
+	if (energy_aware()) {
+		/*
+		 * If the sync flag is set but ignored, prefer to
+		 * select cpu in the same cluster as current. So
+		 * if current is a big cpu and sync is set, indicate
+		 * that the selection algorithm for a boosted task
+		 * should be used.
+		 */
+		bool sync_boost = sync && cpu >= start_cpu(p, true, NULL);
+
+		return select_energy_cpu_brute(p, prev_cpu, sync_boost);
+	}
 
 	rcu_read_lock();
 	for_each_domain(cpu, tmp) {
@@ -12192,7 +12203,7 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 
 		raw_spin_lock(&migration_lock);
 		rcu_read_lock();
-		new_cpu = select_energy_cpu_brute(p, cpu);
+		new_cpu = select_energy_cpu_brute(p, cpu, 0);
 		rcu_read_unlock();
 		if (capacity_orig_of(new_cpu) > capacity_orig_of(cpu)) {
 			active_balance = kick_active_balance(rq, p, new_cpu);
