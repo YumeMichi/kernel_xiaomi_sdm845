@@ -7047,6 +7047,8 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	unsigned long target_max_spare_cap = 0;
 	unsigned long target_util = ULONG_MAX;
 	unsigned long best_active_util = ULONG_MAX;
+	unsigned long best_active_cuml_util = ULONG_MAX;
+	unsigned long best_idle_cuml_util = ULONG_MAX;
 	int best_idle_cstate = INT_MAX;
 	struct sched_domain *sd;
 	struct sched_group *sg;
@@ -7098,7 +7100,7 @@ retry:
 		while ((i = cpumask_next(i, &search_cpus)) < nr_cpu_ids) {
 			unsigned long capacity_curr = capacity_curr_of(i);
 			unsigned long capacity_orig = capacity_orig_of(i);
-			unsigned long wake_util, new_util;
+			unsigned long wake_util, new_util, new_util_cuml;
 
 			cpumask_clear_cpu(i, &search_cpus);
 
@@ -7129,12 +7131,22 @@ retry:
 			}
 
 			/*
+			 * Cumulative demand may already be accounting for the
+			 * task. If so, add just the boost-utilization to
+			 * the cumulative demand of the cpu.
+			 */
+			if (task_in_cum_window_demand(cpu_rq(i), p))
+				new_util_cuml = cpu_util_cum(i, 0) +
+					       min_util - task_util(p);
+			else
+				new_util_cuml = cpu_util_cum(i, 0) + min_util;
+
+			/*
 			 * Ensure minimum capacity to grant the required boost.
 			 * The target CPU can be already at a capacity level higher
 			 * than the one required to boost the task.
 			 */
 			new_util = max(min_util, new_util);
-
 			if (cpu_check_overutil_condition(i, new_util))
 				continue;
 
@@ -7198,7 +7210,6 @@ retry:
 				if (target_cpu != -1)
 					continue;
 
-
 				/*
 				 * Case A.3: Backup ACTIVE CPU
 				 * Favor CPUs with:
@@ -7209,8 +7220,19 @@ retry:
 					continue;
 				if (new_util > best_active_util)
 					continue;
+
+				/*
+				 * If utilization is the same between CPUs,
+				 * break the ties with WALT's cumulative
+				 * demand
+				 */
+				if (new_util == best_active_util &&
+				    new_util_cuml > best_active_cuml_util)
+					continue;
+
 				min_wake_util = wake_util;
 				best_active_util = new_util;
+				best_active_cuml_util = new_util_cuml;
 				best_active_cpu = i;
 				continue;
 			}
@@ -7256,12 +7278,19 @@ retry:
 				 * shallow idle big CPU.
 				 */
 				if (sysctl_sched_cstate_aware &&
-				    best_idle_cstate <= idle_idx)
+				    best_idle_cstate < idle_idx)
+					continue;
+
+				if (best_idle_cstate == idle_idx &&
+					(best_idle_cpu == prev_cpu ||
+					(i != prev_cpu &&
+					new_util_cuml > best_idle_cuml_util)))
 					continue;
 
 				/* Keep track of best idle CPU */
 				target_capacity = capacity_orig;
 				best_idle_cstate = idle_idx;
+				best_idle_cuml_util = new_util_cuml;
 				best_idle_cpu = i;
 				continue;
 			}
