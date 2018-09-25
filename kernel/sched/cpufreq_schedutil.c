@@ -619,14 +619,14 @@ static ssize_t up_rate_limit_us_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->up_rate_limit_us);
+	return snprintf(buf, PAGE_SIZE, "%u\n", tunables->up_rate_limit_us);
 }
 
 static ssize_t down_rate_limit_us_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->down_rate_limit_us);
+	return snprintf(buf, PAGE_SIZE, "%u\n", tunables->down_rate_limit_us);
 }
 
 static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set,
@@ -673,7 +673,7 @@ static ssize_t hispeed_load_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->hispeed_load);
+	return snprintf(buf, PAGE_SIZE, "%u\n", tunables->hispeed_load);
 }
 
 static ssize_t hispeed_load_store(struct gov_attr_set *attr_set,
@@ -693,7 +693,7 @@ static ssize_t hispeed_freq_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->hispeed_freq);
+	return snprintf(buf, PAGE_SIZE, "%u\n", tunables->hispeed_freq);
 }
 
 static ssize_t hispeed_freq_store(struct gov_attr_set *attr_set,
@@ -725,7 +725,7 @@ static ssize_t pl_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->pl);
+	return snprintf(buf, PAGE_SIZE, "%u\n", tunables->pl);
 }
 
 static ssize_t pl_store(struct gov_attr_set *attr_set, const char *buf,
