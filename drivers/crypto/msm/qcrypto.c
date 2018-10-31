@@ -5459,6 +5459,7 @@ static struct platform_driver __qcrypto = {
 		.owner  = THIS_MODULE,
 		.name   = "qcrypto",
 		.of_match_table = qcrypto_match,
+		.probe_type = PROBE_FORCE_SYNCHRONOUS,
 	},
 };
 
