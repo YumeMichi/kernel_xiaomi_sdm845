@@ -881,6 +881,10 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	unsigned threshold_idx;
 	int boost_pct;
 
+	if (!memcmp(current->comm, "init", sizeof("init")) ||
+		!memcmp(current->comm, "power@1.0-servi", sizeof("power@1.0-servi")))
+		return 0;
+
 	if (boost < -100 || boost > 100)
 		return -EINVAL;
 	boost_pct = boost;
