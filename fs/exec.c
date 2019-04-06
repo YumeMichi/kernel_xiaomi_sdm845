@@ -82,12 +82,6 @@ bool task_is_zygote(struct task_struct *p)
 	return p->signal == zygote32_sig || p->signal == zygote64_sig;
 }
 
-bool is_boost_comm(char *comm)
-{
-	return !strcmp(current->comm, "init") ||
-	       !strcmp(current->comm, "power@1.0-servi");
-}
-
 void __register_binfmt(struct linux_binfmt * fmt, int insert)
 {
 	BUG_ON(!fmt);
