@@ -99,7 +99,7 @@ static void __exit lz4_mod_fini(void)
 	crypto_unregister_alg(&alg_lz4);
 }
 
-module_init(lz4_mod_init);
+subsys_initcall(lz4_mod_init);
 module_exit(lz4_mod_fini);
 
 MODULE_LICENSE("GPL");
