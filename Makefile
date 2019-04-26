@@ -400,7 +400,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -pipe \
 KBUILD_CFLAGS	+= --param=max-inline-insns-auto=1000
 
 # Optimization for sdm845
-KBUILD_CFLAGS        += -mcpu=cortex-a75.cortex-a55+crc+crypto
+KBUILD_CFLAGS	+= -mcpu=cortex-a75.cortex-a55+crc+crypto -Wno-attribute-alias -Werror=vla
+
 # This doesn't need 835769/843419 erratum fixes.
 # Some toolchains enable those fixes automatically, so opt-out.
 KBUILD_CFLAGS        += $(call cc-option, -mno-fix-cortex-a53-835769)
