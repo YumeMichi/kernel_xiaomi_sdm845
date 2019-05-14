@@ -3718,7 +3718,8 @@ static inline bool f2fs_force_buffered_io(struct inode *inode,
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	int rw = iov_iter_rw(iter);
 
-	if (f2fs_post_read_required(inode))
+	if (f2fs_post_read_required(inode) &&
+		!fscrypt_using_hardware_encryption(inode))
 		return true;
 	if (f2fs_is_multi_device(sbi))
 		return true;
