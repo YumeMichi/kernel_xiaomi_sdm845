@@ -392,7 +392,7 @@
 	qcom,fg-cutoff-current = <200>;
 	qcom,fg-empty-voltage = <3100>;
 	qcom,fg-jeita-hyst-temp = <2>;
-	qcom,fg-jeita-thresholds = <0 15 45 60>;
+	qcom,fg-jeita-thresholds = <0 15 55 60>;
 	qcom,fg-esr-clamp-mohms = <60>;
 	qcom,fg-batt-temp-delta = <6>;
 	qcom,battery-data = <&mtp_batterydata>;

@@ -5,9 +5,9 @@ qcom,e1_atl_3400mAh {
 	qcom,nom-batt-capacity-mah = <3400>;
 	qcom,batt-id-kohm = <68>;
 	qcom,battery-beta = <3380>;
-	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,fg-cc-cv-threshold-mv = <4400>;
 	qcom,battery-type = "e1_atl_3400mAh";
-	qcom,fastchg-current-ma = <3300>;
+	qcom,fastchg-current-ma = <6600>;
 	qcom,jeita-fcc-ranges = <0   50   330000
                                  51  100  990000
                                  101 150  1650000
