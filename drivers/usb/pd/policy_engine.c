@@ -4238,14 +4238,8 @@ struct usbpd *usbpd_create(struct device *parent)
 		pd->limit_pd_vbus = false;
 	}
 
-	if (pd->limit_pd_vbus) {
-		ret = of_property_read_u32(parent->of_node, "mi,pd_vbus_max_limit",
-				&pd->pd_vbus_max_limit);
-		if (ret) {
-			usbpd_err(&pd->dev, "failed to read pd vbus max limit\n");
-			pd->pd_vbus_max_limit = PD_VBUS_MAX_VOLTAGE_LIMIT;
-		}
-	}
+	if (pd->limit_pd_vbus)
+		pd->pd_vbus_max_limit = PD_VBUS_MAX_VOLTAGE_LIMIT;
 
 	pd->vconn_is_external = device_property_present(parent,
 					"qcom,vconn-uses-external-source");
