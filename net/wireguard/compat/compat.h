@@ -599,7 +599,7 @@ static int wg_get_device_dump_real(a, b)
 #include <asm/xcr.h>
 static inline int cpu_has_xfeatures(u64 xfeatures_needed, const char **feature_name)
 {
-	return xgetbv(XCR_XFEATURE_ENABLED_MASK) & xfeatures_needed;
+	return boot_cpu_has(X86_FEATURE_XSAVE) && xgetbv(XCR_XFEATURE_ENABLED_MASK) & xfeatures_needed;
 }
 #endif
 #ifndef XFEATURE_MASK_YMM
@@ -754,6 +754,9 @@ struct __kernel_timespec {
 #define skb_probe_transport_header(a) skb_probe_transport_header(a, 0)
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 0) && !defined(ISRHEL7)
+#define ignore_df local_df
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
 /* Note that all intentional uses of the non-_bh variety need to explicitly
@@ -792,6 +795,18 @@ static inline void skb_mark_not_on_list(struct sk_buff *skb)
 {
 	skb->next = NULL;
 }
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 20, 0)
+#define NLA_EXACT_LEN NLA_UNSPEC
+#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
+#define NLA_MIN_LEN NLA_UNSPEC
+#define COMPAT_CANNOT_INDIVIDUAL_NETLINK_OPS_POLICY
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0) && defined(__aarch64__)
+#define cpu_have_named_feature(name) (elf_hwcap & (HWCAP_ ## name))
 #endif
 
 /* https://github.com/ClangBuiltLinux/linux/issues/7 */
