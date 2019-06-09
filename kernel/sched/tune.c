@@ -1097,10 +1097,10 @@ static void write_default_values(struct cgroup_subsys_state *css)
 {
 	u8 i;
 	char cg_name[15];
-	static const int boost_values[3] = { 0, 0, 0 };
+	static const int boost_values[3] = { 5, 0, 0 };
 	static const bool prefer_idle_values[3] = { 1, 1, 0 };
 	static const bool sched_colocate_values[3] = { 0, 0, 0 };
-	static const bool sched_boost_no_override_values[3] = { 1, 1, 0 };
+	static const bool sched_boost_no_override_values[3] = { 0, 0, 0 };
 	static const char *stune_groups[] =
 	{ "top-app", "foreground", "background" };
 
