@@ -25,8 +25,8 @@
 bool enable_thermal = true;
 module_param(enable_thermal, bool, 0644);
 
-unsigned int thermal_offset = 0;
-module_param(thermal_offset, uint, 0644);
+int thermal_offset = 0;
+module_param(thermal_offset, int, 0644);
 
 struct thermal_zone {
 	u32 gold_khz;
@@ -79,22 +79,16 @@ static void thermal_throttle_worker(struct work_struct *work)
 	old_zone = t->curr_zone;
 	new_zone = NULL;
 
-	if(thermal_offset >= t->nr_zones)
-		thermal_offset = t->nr_zones - 1;
-
-	if(enable_thermal) {
+	if (enable_thermal) {
 		for (i = t->nr_zones - 1; i >= 0; i--) {
-			if (temp_deg >= t->zones[i].trip_deg) {
-				if(thermal_offset + i >= t->nr_zones)
-					new_zone = t->zones + t->nr_zones - 1;
-				else
-					new_zone = t->zones + i + thermal_offset;
+			if (temp_deg + thermal_offset >= t->zones[i].trip_deg) {
+				new_zone = t->zones + i;
 				break;
 			}
 		}
-	}
-	else
+	} else {
 		new_zone = NULL;
+	}
 
 	/* Update thermal zone if it changed */
 	if (new_zone != old_zone) {
