@@ -636,7 +636,7 @@ static char version[8] = "smb:01:";
 static inline void dump_reg(struct smb_charger *chg, u16 addr,
 		const char *name)
 {
-	u8 reg;
+	u8 reg = 0;
 	int rc;
 	char reg_data[50] = "";
 
@@ -2560,7 +2560,7 @@ static void smblib_reg_work(struct work_struct *work)
 static int smblib_therm_charging(struct smb_charger *chg)
 {
 	int thermal_icl_ua = 0;
-	int temp_level;
+	int temp_level = 0;
 	int rc;
 
 	if (chg->system_temp_level >= MAX_TEMP_LEVEL)
