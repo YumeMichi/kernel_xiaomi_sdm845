@@ -220,6 +220,14 @@ static int mmc_decode_scr(struct mmc_card *card)
 
 	if (scr->sda_spec3)
 		scr->cmds = UNSTUFF_BITS(resp, 32, 2);
+
+	/* SD Spec says: any SD Card shall set at least bits 0 and 2 */
+	if (!(scr->bus_widths & SD_SCR_BUS_WIDTH_1) ||
+	    !(scr->bus_widths & SD_SCR_BUS_WIDTH_4)) {
+		pr_err("%s: invalid bus width\n", mmc_hostname(card->host));
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -1210,6 +1218,8 @@ static void mmc_sd_detect(struct mmc_host *host)
 		goto out;
 	}
 
+	mmc_power_up(host, host->ocr_avail);
+
 	/*
 	 * Just check if our card has been removed.
 	 */
@@ -1349,6 +1359,9 @@ static int _mmc_sd_resume(struct mmc_host *host)
 		mmc_card_set_removed(host->card);
 		mmc_detect_change(host, msecs_to_jiffies(200));
 	} else if (err) {
+		pr_err("%s: %s: mmc_sd_init_card_failed (%d)\n",
+				mmc_hostname(host), __func__, err);
+		mmc_power_off(host);
 		goto out;
 	}
 	mmc_card_clr_suspended(host->card);
