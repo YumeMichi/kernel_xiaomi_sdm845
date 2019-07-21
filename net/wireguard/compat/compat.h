@@ -735,10 +735,6 @@ static inline void cpu_to_le32_array(u32 *buf, unsigned int words)
 #define hlist_add_behind(a, b) hlist_add_after(b, a)
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
-#define totalram_pages() totalram_pages
-#endif
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
 struct __kernel_timespec {
 	int64_t tv_sec, tv_nsec;
