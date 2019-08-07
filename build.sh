@@ -14,7 +14,7 @@ export CROSS_COMPILE=$HOME/Workspace/toolchains/aarch64-elf-gcc/bin/aarch64-elf-
 
 # Kernel Details
 DEFCONFIG="polar_defconfig"
-VER="-R23"
+VER="-R24"
 
 # Paths
 KERNEL_DIR=`pwd`
