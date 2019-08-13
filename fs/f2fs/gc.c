@@ -149,7 +149,7 @@ do_gc:
 			sbi->rapid_gc = false;
 			rapid_gc_set_wakelock();
 			sbi->gc_mode = GC_NORMAL;
-			f2fs_info(sbi, "No more rapid GC victim found, ",
+			f2fs_info(sbi, "No more rapid GC victim found, "
 				"sleeping for %u ms", wait_ms);
 
 			/*
