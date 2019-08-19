@@ -44,7 +44,7 @@ static struct smb_params v1_params = {
 		.name	= "float voltage",
 		.reg	= FLOAT_VOLTAGE_CFG_REG,
 		.min_u	= 3487500,
-		.max_u	= 4400000,
+		.max_u	= 4420000,
 		.step_u	= 7500,
 	},
 	.usb_icl		= {
