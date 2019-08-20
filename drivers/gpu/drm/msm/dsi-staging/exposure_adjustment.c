@@ -31,6 +31,10 @@ static struct drm_msm_pcc pcc_blk = {0};
 #ifndef EA_MODE_ALWAYS_ON
 static bool pcc_backlight_enable = false;
 #endif
+
+static unsigned int flickerfree_threshold = ELVSS_OFF_THRESHOLD;
+module_param(flickerfree_threshold, uint, 0644);
+
 static u32 last_level = ELVSS_OFF_THRESHOLD;
 
 static __read_mostly unsigned int flickerfree_enabled = 0;
@@ -108,7 +112,7 @@ static int ea_panel_send_pcc(u32 bl_lvl)
 		return -ENODEV;
 	}
 
-	if (bl_lvl < ELVSS_OFF_THRESHOLD)
+	if (bl_lvl < flickerfree_threshold)
 		ea_coeff = bl_lvl * PCC_BACKLIGHT_SCALE + EXPOSURE_ADJUSTMENT_MIN;
 	else
 		ea_coeff = EXPOSURE_ADJUSTMENT_MAX;
@@ -128,10 +132,10 @@ void ea_panel_mode_ctrl(struct dsi_panel *panel, bool enable)
 		pr_info("Recover backlight level = %d\n", last_level);
 		dsi_panel_set_backlight(panel, last_level);
 		if (!enable) {
-			ea_panel_send_pcc(ELVSS_OFF_THRESHOLD);
+			ea_panel_send_pcc(flickerfree_threshold);
 		}
 	} else if (last_level == 0 && !pcc_backlight_enable) {
-		ea_panel_send_pcc(ELVSS_OFF_THRESHOLD);
+		ea_panel_send_pcc(flickerfree_threshold);
 	}
 }
 #endif
@@ -144,14 +148,14 @@ u32 ea_panel_calc_backlight(u32 bl_lvl)
 #ifndef EA_MODE_ALWAYS_ON
 		pcc_backlight_enable &&
 #endif
-		bl_lvl < ELVSS_OFF_THRESHOLD) {
+		bl_lvl < flickerfree_threshold) {
 		if (ea_panel_send_pcc(bl_lvl))
 			pr_err("ERROR: Failed to send PCC\n");
 
-		override_level = ELVSS_OFF_THRESHOLD;
+		override_level = flickerfree_threshold;
 	} else {
-		if(last_level < ELVSS_OFF_THRESHOLD)
-			ea_panel_send_pcc(ELVSS_OFF_THRESHOLD);
+		if(last_level < flickerfree_threshold)
+			ea_panel_send_pcc(flickerfree_threshold);
 
 		override_level = bl_lvl;
 	}

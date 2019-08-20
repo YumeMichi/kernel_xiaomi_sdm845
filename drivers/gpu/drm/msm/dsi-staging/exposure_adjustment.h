@@ -34,7 +34,7 @@
 #define EXPOSURE_ADJUSTMENT_MAX    32768
 /* Scale for the PCC coefficient with elvss backlight range */
 #define PCC_BACKLIGHT_SCALE \
-(EXPOSURE_ADJUSTMENT_MAX - EXPOSURE_ADJUSTMENT_MIN) / ELVSS_OFF_THRESHOLD
+(EXPOSURE_ADJUSTMENT_MAX - EXPOSURE_ADJUSTMENT_MIN) / flickerfree_threshold
 
 #ifndef EA_MODE_ALWAYS_ON
 void ea_panel_mode_ctrl(struct dsi_panel *panel, bool enable);
