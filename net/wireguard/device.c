@@ -46,11 +46,7 @@ static int wg_open(struct net_device *dev)
 	}
 #ifndef COMPAT_CANNOT_USE_IN6_DEV_GET
 	if (dev_v6)
-#ifndef COMPAT_CANNOT_USE_DEV_CNF
 		dev_v6->cnf.addr_gen_mode = IN6_ADDR_GEN_MODE_NONE;
-#else
-		dev_v6->addr_gen_mode = IN6_ADDR_GEN_MODE_NONE;
-#endif
 #endif
 
 	ret = wg_socket_init(wg, wg->incoming_port);
