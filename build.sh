@@ -13,8 +13,9 @@ THREAD="-j$(nproc)"
 export CROSS_COMPILE=$HOME/Workspace/toolchains/aarch64-elf-gcc/bin/aarch64-elf-
 
 # Kernel Details
-DEFCONFIG="polar_defconfig"
-VER="-R25"
+DIPPER_DEFCONFIG="polar_dipper_defconfig"
+EQUULEUS_DEFCONFIG="polar_equuleus_defconfig"
+VER="-R26"
 
 # Paths
 KERNEL_DIR=`pwd`
@@ -31,7 +32,7 @@ function clean_all {
 
 function make_kernel {
     echo
-    make O=out $DEFCONFIG
+    make O=out $1
     make O=out $THREAD
 }
 
@@ -47,7 +48,7 @@ function make_zip {
     cp -vr $ZIMAGE_DIR/Image.gz $AK_DIR/kernel/Image.gz
     find $ZIMAGE_DIR -name '*.dtb' -exec cp {} dtbs/ \;
 
-    AK_FULL_VER=$AK_VER-Xiaomi-SDM845-$(date +%F | sed s@-@@g)
+    AK_FULL_VER=$AK_VER-$(date +%F | sed s@-@@g)-$1
 
     zip -r9 $AK_FULL_VER.zip *
     mv $AK_FULL_VER.zip $ZIP_MOVE
@@ -66,10 +67,11 @@ echo -e "${restore}"
 # Vars
 BASE_AK_VER="PolarKernel"
 AK_VER="$BASE_AK_VER$VER"
+export LOCALVERSION=~`echo $AK_VER`
 export ARCH=arm64
 export SUBARCH=arm64
 export KBUILD_BUILD_USER=YumeMichi
-export KBUILD_BUILD_HOST=Ref:rain
+export KBUILD_BUILD_HOST=Evergarden
 
 echo
 
@@ -95,18 +97,31 @@ done
 
 echo
 
-while read -p "Start building (y/n)? " dchoice
+while read -p "Select target to build (d: dipper, e: equuleus, a: all). " dchoice
 do
 case "$dchoice" in
-    y|Y )
-        make_kernel
-        make_zip
+    d|D )
+        make_kernel $DIPPER_DEFCONFIG
+        make_zip dipper
         break
         ;;
-    n|N )
+    e|E )
+        make_kernel $EQUULEUS_DEFCONFIG
+        make_zip equuleus
+        break
+        ;;
+    a|A )
+        make_kernel $DIPPER_DEFCONFIG
+        make_zip dipper
+
         echo
-	echo "Abort!"
-	echo
+        echo "Force clean..."
+        clean_all
+        echo
+        echo "All Cleaned now."
+
+        make_kernel $EQUULEUS_DEFCONFIG
+        make_zip equuleus
         break
         ;;
     * )
