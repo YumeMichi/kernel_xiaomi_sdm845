@@ -15,7 +15,7 @@ export CROSS_COMPILE=$HOME/Workspace/toolchains/aarch64-elf-gcc/bin/aarch64-elf-
 # Kernel Details
 DIPPER_DEFCONFIG="polar_dipper_defconfig"
 EQUULEUS_DEFCONFIG="polar_equuleus_defconfig"
-VER="-R26"
+VER="-R27"
 
 # Paths
 KERNEL_DIR=`pwd`
@@ -67,7 +67,7 @@ echo -e "${restore}"
 # Vars
 BASE_AK_VER="PolarKernel"
 AK_VER="$BASE_AK_VER$VER"
-export LOCALVERSION=~`echo $AK_VER`
+export LOCALVERSION=-`echo $AK_VER`
 export ARCH=arm64
 export SUBARCH=arm64
 export KBUILD_BUILD_USER=YumeMichi
