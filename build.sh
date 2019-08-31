@@ -67,7 +67,7 @@ echo -e "${restore}"
 # Vars
 BASE_AK_VER="PolarKernel"
 AK_VER="$BASE_AK_VER$VER"
-export LOCALVERSION=-`echo $AK_VER`
+export LOCALVERSION=-`echo $VER`
 export ARCH=arm64
 export SUBARCH=arm64
 export KBUILD_BUILD_USER=YumeMichi
