@@ -15,7 +15,7 @@ export CROSS_COMPILE=$HOME/Workspace/toolchains/aarch64-elf-gcc/bin/aarch64-elf-
 # Kernel Details
 DIPPER_DEFCONFIG="polar_dipper_defconfig"
 EQUULEUS_DEFCONFIG="polar_equuleus_defconfig"
-VER="-R27"
+VER="-R28"
 
 # Paths
 KERNEL_DIR=`pwd`
@@ -33,6 +33,7 @@ function clean_all {
 function make_kernel {
     echo
     make O=out $1
+    make O=out savedefconfig
     make O=out $THREAD
 }
 
