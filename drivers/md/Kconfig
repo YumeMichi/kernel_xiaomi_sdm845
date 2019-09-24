@@ -277,6 +277,39 @@ config DM_CRYPT
 
 	  If unsure, say N.
 
+config DM_REQ_CRYPT
+	tristate "Req Crypt target support"
+	depends on BLK_DEV_DM
+	select XTS
+	select CRYPTO_XTS
+	---help---
+	  This request based device-mapper target allows you to create a device that
+	  transparently encrypts the data on it. You'll need to activate
+	  the ciphers you're going to use in the cryptoapi configuration.
+	  The DM REQ CRYPT operates on requests (bigger payloads) to utilize
+	  crypto hardware better.
+
+	  To compile this code as a module, choose M here: the module will
+	  be called dm-req-crypt.
+
+config DM_DEFAULT_KEY
+	tristate "Default-key crypt target support"
+	depends on BLK_DEV_DM
+	depends on PFK
+	---help---
+	  This (currently Android-specific) device-mapper target allows you to
+	  create a device that assigns a default encryption key to bios that
+	  don't already have one.  This can sit between inline cryptographic
+	  acceleration hardware and filesystems that use it.  This ensures that
+	  where the filesystem doesn't explicitly specify a key, such as for
+	  filesystem metadata, a default key will be used instead, leaving no
+	  sectors unencrypted.
+
+	  To compile this code as a module, choose M here: the module will be
+	  called dm-default-key.
+
+	  If unsure, say N.
+
 config DM_SNAPSHOT
        tristate "Snapshot target"
        depends on BLK_DEV_DM

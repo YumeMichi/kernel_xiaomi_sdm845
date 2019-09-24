@@ -490,6 +490,18 @@ static inline int rdev_connect(struct cfg80211_registered_device *rdev,
 	return ret;
 }
 
+static inline int
+rdev_update_connect_params(struct cfg80211_registered_device *rdev,
+			   struct net_device *dev,
+			   struct cfg80211_connect_params *sme, u32 changed)
+{
+	int ret;
+	trace_rdev_update_connect_params(&rdev->wiphy, dev, sme, changed);
+	ret = rdev->ops->update_connect_params(&rdev->wiphy, dev, sme, changed);
+	trace_rdev_return_int(&rdev->wiphy, ret);
+	return ret;
+}
+
 static inline int rdev_disconnect(struct cfg80211_registered_device *rdev,
 				  struct net_device *dev, u16 reason_code)
 {
@@ -558,6 +570,18 @@ static inline int rdev_set_wds_peer(struct cfg80211_registered_device *rdev,
 	int ret;
 	trace_rdev_set_wds_peer(&rdev->wiphy, dev, addr);
 	ret = rdev->ops->set_wds_peer(&rdev->wiphy, dev, addr);
+	trace_rdev_return_int(&rdev->wiphy, ret);
+	return ret;
+}
+
+static inline int
+rdev_set_multicast_to_unicast(struct cfg80211_registered_device *rdev,
+			      struct net_device *dev,
+			      const bool enabled)
+{
+	int ret;
+	trace_rdev_set_multicast_to_unicast(&rdev->wiphy, dev, enabled);
+	ret = rdev->ops->set_multicast_to_unicast(&rdev->wiphy, dev, enabled);
 	trace_rdev_return_int(&rdev->wiphy, ret);
 	return ret;
 }
@@ -1129,4 +1153,19 @@ rdev_set_coalesce(struct cfg80211_registered_device *rdev,
 	trace_rdev_return_int(&rdev->wiphy, ret);
 	return ret;
 }
+
+static inline int
+rdev_external_auth(struct cfg80211_registered_device *rdev,
+		   struct net_device *dev,
+		   struct cfg80211_external_auth_params *params)
+{
+	int ret = -EOPNOTSUPP;
+
+	trace_rdev_external_auth(&rdev->wiphy, dev, params);
+	if (rdev->ops->external_auth)
+		ret = rdev->ops->external_auth(&rdev->wiphy, dev, params);
+	trace_rdev_return_int(&rdev->wiphy, ret);
+	return ret;
+}
+
 #endif /* __CFG80211_RDEV_OPS */

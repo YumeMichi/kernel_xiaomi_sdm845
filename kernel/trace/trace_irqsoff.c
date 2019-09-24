@@ -13,6 +13,7 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <linux/ftrace.h>
+#include <linux/sched/sysctl.h>
 
 #include "trace.h"
 
@@ -38,6 +39,12 @@ static int save_flags;
 
 static void stop_irqsoff_tracer(struct trace_array *tr, int graph);
 static int start_irqsoff_tracer(struct trace_array *tr, int graph);
+
+/*
+ * irqsoff stack tracing threshold in ns.
+ * default: 1ms
+ */
+unsigned int sysctl_irqsoff_tracing_threshold_ns = 1000000UL;
 
 #ifdef CONFIG_PREEMPT_TRACER
 static inline int
@@ -454,17 +461,47 @@ void time_hardirqs_off(unsigned long a0, unsigned long a1)
 
 #else /* !CONFIG_PROVE_LOCKING */
 
+#ifdef CONFIG_PREEMPTIRQ_EVENTS
+struct irqsoff_store {
+	u64 ts;
+	unsigned long caddr[4];
+};
+
+static DEFINE_PER_CPU(struct irqsoff_store, the_irqsoff);
+#endif /* CONFIG_PREEMPTIRQ_EVENTS */
+
 /*
  * We are only interested in hardirq on/off events:
  */
 static inline void tracer_hardirqs_on(void)
 {
+#ifdef CONFIG_PREEMPTIRQ_EVENTS
+	struct irqsoff_store *is = &per_cpu(the_irqsoff,
+						raw_smp_processor_id());
+	u64 delta = sched_clock() - is->ts;
+
+	if (delta > sysctl_irqsoff_tracing_threshold_ns)
+		trace_irqs_disable(delta, is->caddr[0], is->caddr[1],
+						is->caddr[2], is->caddr[3]);
+#endif /* CONFIG_PREEMPTIRQ_EVENTS */
+
 	if (!preempt_trace() && irq_trace())
 		stop_critical_timing(CALLER_ADDR0, CALLER_ADDR1);
 }
 
 static inline void tracer_hardirqs_off(void)
 {
+#ifdef CONFIG_PREEMPTIRQ_EVENTS
+	struct irqsoff_store *is = &per_cpu(the_irqsoff,
+						raw_smp_processor_id());
+
+	is->ts = sched_clock();
+	is->caddr[0] = CALLER_ADDR0;
+	is->caddr[1] = CALLER_ADDR1;
+	is->caddr[2] = CALLER_ADDR2;
+	is->caddr[3] = CALLER_ADDR3;
+#endif /* CONFIG_PREEMPTIRQ_EVENTS */
+
 	if (!preempt_trace() && irq_trace())
 		start_critical_timing(CALLER_ADDR0, CALLER_ADDR1);
 }
@@ -767,10 +804,9 @@ static inline void tracer_preempt_on(unsigned long a0, unsigned long a1) { }
 static inline void tracer_preempt_off(unsigned long a0, unsigned long a1) { }
 #endif
 
+#if defined(CONFIG_TRACE_IRQFLAGS) && !defined(CONFIG_PROVE_LOCKING)
 /* Per-cpu variable to prevent redundant calls when IRQs already off */
 static DEFINE_PER_CPU(int, tracing_irq_cpu);
-
-#if defined(CONFIG_TRACE_IRQFLAGS) && !defined(CONFIG_PROVE_LOCKING)
 void trace_hardirqs_on(void)
 {
 	if (!this_cpu_read(tracing_irq_cpu))

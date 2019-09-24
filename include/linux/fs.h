@@ -499,6 +499,7 @@ struct block_device {
 	int			bd_invalidated;
 	struct gendisk *	bd_disk;
 	struct request_queue *  bd_queue;
+	struct backing_dev_info *bd_bdi;
 	struct list_head	bd_list;
 	/*
 	 * Private data.  You must have bd_claim'ed the block_device
@@ -2425,6 +2426,7 @@ extern struct kmem_cache *names_cachep;
 #ifdef CONFIG_BLOCK
 extern int register_blkdev(unsigned int, const char *);
 extern void unregister_blkdev(unsigned int, const char *);
+extern void bdev_unhash_inode(dev_t dev);
 extern struct block_device *bdget(dev_t);
 extern struct block_device *bdgrab(struct block_device *bdev);
 extern void bd_set_size(struct block_device *, loff_t size);
@@ -2952,6 +2954,8 @@ static inline void inode_dio_end(struct inode *inode)
 	if (atomic_dec_and_test(&inode->i_dio_count))
 		wake_up_bit(&inode->i_state, __I_DIO_WAKEUP);
 }
+
+struct inode *dio_bio_get_inode(struct bio *bio);
 
 extern void inode_set_flags(struct inode *inode, unsigned int flags,
 			    unsigned int mask);

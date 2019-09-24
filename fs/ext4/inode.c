@@ -42,6 +42,7 @@
 #include "xattr.h"
 #include "acl.h"
 #include "truncate.h"
+//#include "ext4_ice.h"
 
 #include <trace/events/ext4.h>
 #include <trace/events/android_fs.h>
@@ -1149,9 +1150,12 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
 		if (!buffer_uptodate(bh) && !buffer_delay(bh) &&
 		    !buffer_unwritten(bh) &&
 		    (block_start < from || block_end > to)) {
-			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
+			decrypt = IS_ENCRYPTED(inode) &&
+				S_ISREG(inode->i_mode) &&
+				!fscrypt_using_hardware_encryption(inode);
+			ll_rw_block(REQ_OP_READ, (decrypt ? REQ_NOENCRYPT : 0),
+				    1, &bh);
 			*wait_bh++ = bh;
-			decrypt = IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode);
 		}
 	}
 	/*
@@ -3497,6 +3501,10 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
 		get_block_func = ext4_dio_get_block_unwritten_async;
 		dio_flags = DIO_LOCKING;
 	}
+#if defined(CONFIG_EXT4_FS_ENCRYPTION)
+	WARN_ON(IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode)
+		&& !fscrypt_using_hardware_encryption(inode));
+#endif
 	if (IS_DAX(inode)) {
 		ret = dax_do_io(iocb, inode, iter, get_block_func,
 				ext4_end_io_dio, dio_flags);
@@ -3616,8 +3624,9 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 	ssize_t ret;
 	int rw = iov_iter_rw(iter);
 
-#ifdef CONFIG_FS_ENCRYPTION
-	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
+#ifdef CONFIG_EXT4_FS_ENCRYPTION
+	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode)
+		&& !fscrypt_using_hardware_encryption(inode))
 		return 0;
 #endif
 
@@ -3765,6 +3774,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
 	struct inode *inode = mapping->host;
 	struct buffer_head *bh;
 	struct page *page;
+	bool decrypt;
 	int err = 0;
 
 	page = find_or_create_page(mapping, from >> PAGE_SHIFT,
@@ -3807,12 +3817,15 @@ static int __ext4_block_zero_page_range(handle_t *handle,
 
 	if (!buffer_uptodate(bh)) {
 		err = -EIO;
-		ll_rw_block(REQ_OP_READ, 0, 1, &bh);
+		decrypt = S_ISREG(inode->i_mode) &&
+			IS_ENCRYPTED(inode) &&
+			!fscrypt_using_hardware_encryption(inode);
+		ll_rw_block(REQ_OP_READ, (decrypt ? REQ_NOENCRYPT : 0), 1, &bh);
 		wait_on_buffer(bh);
 		/* Uhhuh. Read error. Complain and punt. */
 		if (!buffer_uptodate(bh))
 			goto unlock;
-		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode)) {
+		if (decrypt) {
 			/* We expect the key to be set. */
 			BUG_ON(!fscrypt_has_encryption_key(inode));
 			BUG_ON(blocksize != PAGE_SIZE);
@@ -3986,6 +3999,7 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
 
 int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
 {
+#if 0
 	struct super_block *sb = inode->i_sb;
 	ext4_lblk_t first_block, stop_block;
 	struct address_space *mapping = inode->i_mapping;
@@ -4116,6 +4130,12 @@ out_dio:
 out_mutex:
 	inode_unlock(inode);
 	return ret;
+#else
+	/*
+	 * Disabled as per b/28760453
+	 */
+	return -EOPNOTSUPP;
+#endif
 }
 
 int ext4_inode_attach_jinode(struct inode *inode)

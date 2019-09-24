@@ -586,3 +586,29 @@ void goldfish_pipe_device_deinit_v1(struct platform_device *pdev)
 {
     misc_deregister(&goldfish_pipe_dev);
 }
+
+static const struct acpi_device_id goldfish_pipe_acpi_match[] = {
+	{ "GFSH0003", 0 },
+	{ },
+};
+MODULE_DEVICE_TABLE(acpi, goldfish_pipe_acpi_match);
+
+static const struct of_device_id goldfish_pipe_of_match[] = {
+	{ .compatible = "google,android-pipe", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, goldfish_pipe_of_match);
+
+static struct platform_driver goldfish_pipe = {
+	.probe = goldfish_pipe_probe,
+	.remove = goldfish_pipe_remove,
+	.driver = {
+		.name = "goldfish_pipe",
+		.of_match_table = goldfish_pipe_of_match,
+		.acpi_match_table = ACPI_PTR(goldfish_pipe_acpi_match),
+	}
+};
+
+module_platform_driver(goldfish_pipe);
+MODULE_AUTHOR("David Turner <digit@google.com>");
+MODULE_LICENSE("GPL");

@@ -241,7 +241,7 @@ static int remove_migration_pte(struct page *new, struct vm_area_struct *vma,
 
 	/* Recheck VMA as permissions can change since migration started  */
 	if (is_write_migration_entry(entry))
-		pte = maybe_mkwrite(pte, vma);
+		pte = maybe_mkwrite(pte, vma->vm_flags);
 
 #ifdef CONFIG_HUGETLB_PAGE
 	if (PageHuge(new)) {
@@ -1023,7 +1023,7 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 		VM_BUG_ON_PAGE(PageAnon(page) && !PageKsm(page) && !anon_vma,
 				page);
 		try_to_unmap(page,
-			TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS);
+			TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS, NULL);
 		page_was_mapped = 1;
 	}
 
@@ -1254,7 +1254,7 @@ static int unmap_and_move_huge_page(new_page_t get_new_page,
 
 	if (page_mapped(hpage)) {
 		try_to_unmap(hpage,
-			TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS);
+			TTU_MIGRATION|TTU_IGNORE_MLOCK|TTU_IGNORE_ACCESS, NULL);
 		page_was_mapped = 1;
 	}
 
@@ -1335,6 +1335,8 @@ int migrate_pages(struct list_head *from, new_page_t get_new_page,
 	struct page *page2;
 	int swapwrite = current->flags & PF_SWAPWRITE;
 	int rc;
+
+	trace_mm_migrate_pages_start(mode, reason);
 
 	if (!swapwrite)
 		current->flags |= PF_SWAPWRITE;
@@ -1747,9 +1749,6 @@ static bool migrate_balanced_pgdat(struct pglist_data *pgdat,
 {
 	int z;
 
-	if (!pgdat_reclaimable(pgdat))
-		return false;
-
 	for (z = pgdat->nr_zones - 1; z >= 0; z--) {
 		struct zone *zone = pgdat->node_zones + z;
 
@@ -1872,7 +1871,7 @@ bool pmd_trans_migrating(pmd_t pmd)
  * node. Caller is expected to have an elevated reference count on
  * the page that will be dropped by this function before returning.
  */
-int migrate_misplaced_page(struct page *page, struct vm_area_struct *vma,
+int migrate_misplaced_page(struct page *page, struct fault_env *fe,
 			   int node)
 {
 	pg_data_t *pgdat = NODE_DATA(node);
@@ -1885,7 +1884,7 @@ int migrate_misplaced_page(struct page *page, struct vm_area_struct *vma,
 	 * with execute permissions as they are probably shared libraries.
 	 */
 	if (page_mapcount(page) != 1 && page_is_file_cache(page) &&
-	    (vma->vm_flags & VM_EXEC))
+	    (fe->vma_flags & VM_EXEC))
 		goto out;
 
 	/*

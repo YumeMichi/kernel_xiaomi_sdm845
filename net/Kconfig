@@ -244,6 +244,7 @@ source "net/switchdev/Kconfig"
 source "net/l3mdev/Kconfig"
 source "net/qrtr/Kconfig"
 source "net/ncsi/Kconfig"
+source "net/rmnet_data/Kconfig"
 
 config RPS
 	bool
@@ -316,6 +317,15 @@ config NET_FLOW_LIMIT
 	  maintain capacity for the other flows. This feature provides servers
 	  with many clients some protection against DoS by a single (spoofed)
 	  flow that greatly exceeds average workload.
+
+config SOCKEV_NLMCAST
+	bool "Enable SOCKEV Netlink Multicast"
+	default n
+	---help---
+	  Default client for SOCKEV notifier events. Sends multicast netlink
+	  messages whenever the socket event notifier is invoked. Enable if
+	  user space entities need to be notified of socket events without
+	  having to poll /proc
 
 menu "Network testing"
 
@@ -424,6 +434,8 @@ config MAY_USE_DEVLINK
 	  Drivers using the devlink infrastructure should have a dependency
 	  on MAY_USE_DEVLINK to ensure they do not cause link errors when
 	  devlink is a loadable module and the driver using it is built-in.
+
+source "net/ipc_router/Kconfig"
 
 endif   # if NET
 
