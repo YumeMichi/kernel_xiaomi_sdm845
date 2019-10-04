@@ -8,14 +8,32 @@ restore='\033[0m'
 
 clear
 
-# Resources
+# Number of parallel jobs to run
 THREAD="-j$(nproc)"
-export CROSS_COMPILE=$HOME/Workspace/toolchains/arm64-gcc/bin/aarch64-elf-
+
+# Path to executables in Clang toolchain
+CLANG_BIN="$HOME/Workspace/toolchains/proton_clang-10.0.0/bin"
+
+# 64-bit GCC toolchain prefix
+GCC64_PREFIX="$HOME/Workspace/toolchains/proton_clang-10.0.0/bin/aarch64-linux-gnu-"
+
+# 32-bit GCC toolchain prefix
+GCC32_PREFIX="$HOME/Workspace/toolchains/proton_clang-10.0.0/bin/arm-linux-gnueabi-"
+
+# Setup variables
+export LD_LIBRARY_PATH="$CLANG_BIN/../lib:$CLANG_BIN/../lib64:$LD_LIBRARY_PATH"
+export PATH="$CLANG_BIN:$PATH"
+export CROSS_COMPILE="$GCC64_PREFIX"
+export CROSS_COMPILE_ARM32="$GCC32_PREFIX"
+export CLANG_TRIPLE="aarch64-linux-gnu-"
+
+# Setup Clang flags
+CLANG_FLAGS="CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip"
 
 # Kernel Details
 DIPPER_DEFCONFIG="polar_dipper_defconfig"
 EQUULEUS_DEFCONFIG="polar_equuleus_defconfig"
-VER="-staging"
+VER="-Qbeta"
 
 # Paths
 KERNEL_DIR=`pwd`
@@ -32,9 +50,9 @@ function clean_all {
 
 function make_kernel {
     echo
-    make O=out $1
-    make O=out savedefconfig
-    make O=out $THREAD
+    make O=out $CLANG_FLAGS $1
+    make O=out $CLANG_FLAGS savedefconfig
+    make O=out $CLANG_FLAGS $THREAD
 }
 
 function make_zip {
