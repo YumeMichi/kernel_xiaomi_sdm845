@@ -125,6 +125,15 @@ static unsigned int sched_nr_latency = 8;
 unsigned int sysctl_sched_child_runs_first __read_mostly;
 
 /*
+ * To enable/disable energy aware feature.
+ */
+#ifdef CONFIG_DEFAULT_USE_ENERGY_AWARE
+unsigned int __read_mostly sysctl_sched_energy_aware = 1;
+#else
+unsigned int __read_mostly sysctl_sched_energy_aware;
+#endif
+
+/*
  * SCHED_OTHER wake-up granularity.
  * (default: 1 msec * (1 + ilog(ncpus)), units: nanoseconds)
  *
@@ -5637,6 +5646,11 @@ static void record_wakee(struct task_struct *p)
 		current->last_wakee = p;
 		current->wakee_flips++;
 	}
+}
+
+inline bool energy_aware(void)
+{
+	return sysctl_sched_energy_aware;
 }
 
 /*

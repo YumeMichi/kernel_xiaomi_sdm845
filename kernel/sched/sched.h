@@ -121,6 +121,8 @@ extern void update_idle_core(struct rq *rq);
 static inline void update_idle_core(struct rq *rq) { }
 #endif
 
+extern bool energy_aware(void);
+
 /*
  * Helpers for converting nanosecond timing to jiffy resolution
  */
@@ -2959,10 +2961,6 @@ static inline void walt_update_min_max_capacity(void) { }
 static inline void walt_map_freq_to_load(void) { }
 #endif	/* CONFIG_SCHED_WALT */
 
-static inline bool energy_aware(void)
-{
-	return sched_feat(ENERGY_AWARE);
-}
 
 #ifdef CONFIG_SCHED_CORE_ROTATE
 struct find_first_cpu_bit_env {
