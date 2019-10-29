@@ -328,7 +328,7 @@ static void sugov_calc_avg_cap(struct sugov_policy *sg_policy, u64 curr_ws,
 	if (unlikely(!sysctl_sched_use_walt_cpu_util))
 		return;
 
-	BUG_ON(curr_ws < last_ws);
+	WARN_ON(curr_ws < last_ws);
 	if (curr_ws <= last_ws)
 		return;
 
