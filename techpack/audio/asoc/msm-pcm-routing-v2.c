@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,6 +39,8 @@
 #include <dsp/q6lsm.h>
 #include <dsp/q6core.h>
 #include <dsp/audio_cal_utils.h>
+#include <dsp/apr_elliptic.h>
+#include <elliptic/elliptic_mixer_controls.h>
 
 #include "msm-pcm-routing-v2.h"
 #include "msm-pcm-routing-devdep.h"
@@ -79,6 +82,10 @@ static int msm_ec_ref_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_ec_ref_sampling_rate = 48000;
 static uint32_t voc_session_id = ALL_SESSION_VSID;
 static int msm_route_ext_ec_ref;
+static int voice_ext_ec_ref;
+static int voip_ext_ec_ref;
+static int wakeup_ext_ec_ref = 0;
+static int voip_ext_ec_common_ref = 0;
 static bool is_custom_stereo_on;
 static bool is_ds2_on;
 static bool swap_ch;
@@ -3581,9 +3588,16 @@ static const struct snd_kcontrol_new ec_ref_param_controls[] = {
 static int msm_routing_ec_ref_rx_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
+	struct snd_soc_dapm_widget_list *wlist =
+						dapm_kcontrol_get_wlist(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
+
 	pr_debug("%s: ec_ref_rx  = %d", __func__, msm_route_ec_ref_rx);
 	mutex_lock(&routing_lock);
-	ucontrol->value.integer.value[0] = msm_route_ec_ref_rx;
+	if (!strncmp(widget->name, "AUDIO_REF_EC_UL10 MUX", strlen("AUDIO_REF_EC_UL10 MUX")))
+		ucontrol->value.integer.value[0] = voip_ext_ec_common_ref;
+	else
+		ucontrol->value.integer.value[0] = wakeup_ext_ec_ref;
 	mutex_unlock(&routing_lock);
 	return 0;
 }
@@ -3596,13 +3610,14 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		snd_soc_dapm_kcontrol_widget(kcontrol);
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	struct snd_soc_dapm_update *update = NULL;
-
+	bool state = true;
 
 	mutex_lock(&routing_lock);
 	switch (ucontrol->value.integer.value[0]) {
 	case 0:
 		msm_route_ec_ref_rx = 0;
 		ec_ref_port_id = AFE_PORT_INVALID;
+		state = false;
 		break;
 	case 1:
 		msm_route_ec_ref_rx = 1;
@@ -3697,14 +3712,27 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		pr_err("%s EC ref rx %ld not valid\n",
 			__func__, ucontrol->value.integer.value[0]);
 		ec_ref_port_id = AFE_PORT_INVALID;
+		state = false;
 		break;
 	}
-	adm_ec_ref_rx_id(ec_ref_port_id);
+
 	pr_debug("%s: msm_route_ec_ref_rx = %d\n",
-	    __func__, msm_route_ec_ref_rx);
-	mutex_unlock(&routing_lock);
-	snd_soc_dapm_mux_update_power(widget->dapm, kcontrol,
+			__func__, msm_route_ec_ref_rx);
+
+	if (!strncmp(widget->name, "AUDIO_REF_EC_UL10 MUX", strlen("AUDIO_REF_EC_UL10 MUX")))
+		voip_ext_ec_common_ref = msm_route_ec_ref_rx;
+	else
+		wakeup_ext_ec_ref = msm_route_ec_ref_rx;
+
+	if (state || (!state && wakeup_ext_ec_ref == 0 && voip_ext_ec_common_ref == 0)) {
+		pr_info("%s: update state!\n", __func__);
+		adm_ec_ref_rx_id(ec_ref_port_id);
+		mutex_unlock(&routing_lock);
+		snd_soc_dapm_mux_update_power(widget->dapm, kcontrol,
 					msm_route_ec_ref_rx, e, update);
+	} else {
+		mutex_unlock(&routing_lock);
+	}
 	return 0;
 }
 
@@ -3798,10 +3826,17 @@ static const struct snd_kcontrol_new ext_ec_ref_mux_ul29 =
 static int msm_routing_ext_ec_get(struct snd_kcontrol *kcontrol,
 				  struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s: ext_ec_ref_rx  = %x\n", __func__, msm_route_ext_ec_ref);
+	struct snd_soc_dapm_widget_list *wlist =
+						dapm_kcontrol_get_wlist(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
+
+	pr_info("%s: ext_ec_ref_rx  = %x\n", __func__, msm_route_ext_ec_ref);
 
 	mutex_lock(&routing_lock);
-	ucontrol->value.integer.value[0] = msm_route_ext_ec_ref;
+	if (!strncmp(widget->name, "VOC_EXT_EC MUX", strlen("VOC_EXT_EC MUX")))
+		ucontrol->value.integer.value[0] = voice_ext_ec_ref;
+	else
+		ucontrol->value.integer.value[0] = voip_ext_ec_ref;
 	mutex_unlock(&routing_lock);
 	return 0;
 }
@@ -3825,6 +3860,7 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 
 	mutex_lock(&routing_lock);
 	msm_route_ext_ec_ref = ucontrol->value.integer.value[0];
+	pr_info("%s: %s, value %d\n", __func__, widget->name, msm_route_ext_ec_ref);
 
 	switch (msm_route_ext_ec_ref) {
 	case EXT_EC_REF_PRI_MI2S_TX:
@@ -3855,12 +3891,23 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: val = %d ext_ec_ref_port_id = 0x%0x state = %d\n",
 		 __func__, msm_route_ext_ec_ref, ext_ec_ref_port_id, state);
 
-	if (!voc_set_ext_ec_ref_port_id(ext_ec_ref_port_id, state)) {
-		mutex_unlock(&routing_lock);
-		snd_soc_dapm_mux_update_power(widget->dapm, kcontrol, mux, e,
-						update);
+	if (!strncmp(widget->name, "VOC_EXT_EC MUX", strlen("VOC_EXT_EC MUX")))
+		voice_ext_ec_ref = msm_route_ext_ec_ref;
+	else
+		voip_ext_ec_ref = msm_route_ext_ec_ref;
+
+	pr_info("%s: state %d, voice ec ref %d, voip ec ref %d\n", __func__,
+			state, voice_ext_ec_ref, voip_ext_ec_ref);
+	if (state || (!state && voice_ext_ec_ref == 0 && voip_ext_ec_ref == 0)) {
+		pr_info("%s: update state!\n", __func__);
+		if (!voc_set_ext_ec_ref_port_id(ext_ec_ref_port_id, state)) {
+			mutex_unlock(&routing_lock);
+			snd_soc_dapm_mux_update_power(widget->dapm, kcontrol, mux, e, update);
+		} else {
+			ret = -EINVAL;
+			mutex_unlock(&routing_lock);
+		}
 	} else {
-		ret = -EINVAL;
 		mutex_unlock(&routing_lock);
 	}
 	return ret;
@@ -3879,6 +3926,9 @@ static const struct snd_kcontrol_new voc_ext_ec_mux =
 	SOC_DAPM_ENUM_EXT("VOC_EXT_EC MUX Mux", msm_route_ext_ec_ref_rx_enum[0],
 			  msm_routing_ext_ec_get, msm_routing_ext_ec_put);
 
+static const struct snd_kcontrol_new voip_ext_ec_mux =
+	SOC_DAPM_ENUM_EXT("VOIP_EXT_EC MUX Mux", msm_route_ext_ec_ref_rx_enum[0],
+			msm_routing_ext_ec_get, msm_routing_ext_ec_put);
 
 static const struct snd_kcontrol_new pri_i2s_rx_mixer_controls[] = {
 	SOC_DOUBLE_EXT("MultiMedia1", SND_SOC_NOPM,
@@ -16033,6 +16083,8 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 
 	SND_SOC_DAPM_MUX("VOC_EXT_EC MUX", SND_SOC_NOPM, 0, 0,
 			 &voc_ext_ec_mux),
+	SND_SOC_DAPM_MUX("VOIP_EXT_EC MUX", SND_SOC_NOPM, 0, 0,
+			 &voip_ext_ec_mux),
 	SND_SOC_DAPM_MUX("AUDIO_REF_EC_UL1 MUX", SND_SOC_NOPM, 0, 0,
 		&ext_ec_ref_mux_ul1),
 	SND_SOC_DAPM_MUX("AUDIO_REF_EC_UL2 MUX", SND_SOC_NOPM, 0, 0,
@@ -17633,9 +17685,24 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"VOC_EXT_EC MUX", "QUAT_MI2S_TX", "QUAT_MI2S_TX"},
 	{"VOC_EXT_EC MUX", "QUIN_MI2S_TX", "QUIN_MI2S_TX"},
 	{"VOC_EXT_EC MUX", "SLIM_1_TX",    "SLIMBUS_1_TX"},
+
+	{"VOIP_EXT_EC MUX", "PRI_MI2S_TX" , "PRI_MI2S_TX"},
+	{"VOIP_EXT_EC MUX", "SEC_MI2S_TX" , "SEC_MI2S_TX"},
+	{"VOIP_EXT_EC MUX", "TERT_MI2S_TX" , "TERT_MI2S_TX"},
+	{"VOIP_EXT_EC MUX", "QUAT_MI2S_TX" , "QUAT_MI2S_TX"},
+	{"VOIP_EXT_EC MUX", "SLIM_1_TX" , "SLIMBUS_1_TX"},
+
 	{"VOIP_UL", NULL, "VOC_EXT_EC MUX"},
 	{"VOICEMMODE1_UL", NULL, "VOC_EXT_EC MUX"},
 	{"VOICEMMODE2_UL", NULL, "VOC_EXT_EC MUX"},
+
+	{"CS-VOICE_UL1", NULL, "VOIP_EXT_EC MUX"},
+	{"VOIP_UL", NULL, "VOIP_EXT_EC MUX"},
+	{"VoLTE_UL", NULL, "VOIP_EXT_EC MUX"},
+	{"VOICE2_UL", NULL, "VOIP_EXT_EC MUX"},
+	{"VoWLAN_UL", NULL, "VOIP_EXT_EC MUX"},
+	{"VOICEMMODE1_UL", NULL, "VOIP_EXT_EC MUX"},
+	{"VOICEMMODE2_UL", NULL, "VOIP_EXT_EC MUX"},
 
 	{"AUDIO_REF_EC_UL1 MUX", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"AUDIO_REF_EC_UL1 MUX", "SEC_MI2S_TX", "SEC_MI2S_TX"},
@@ -19506,6 +19573,7 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 					ARRAY_SIZE(aptx_dec_license_controls));
 	snd_soc_add_platform_controls(platform, stereo_channel_reverse_control,
 				ARRAY_SIZE(stereo_channel_reverse_control));
+	elliptic_add_platform_controls(platform);
 	return 0;
 }
 
