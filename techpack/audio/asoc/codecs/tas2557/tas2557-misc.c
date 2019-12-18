@@ -1,6 +1,7 @@
 /*
 ** =============================================================================
 ** Copyright (c) 2016  Texas Instruments Inc.
+** Copyright (C) 2019 XiaoMi, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify it under
 ** the terms of the GNU General Public License as published by the Free Software
@@ -462,7 +463,6 @@ static ssize_t tas2557_file_write(struct file *file, const char *buf, size_t cou
 				pFWName = TAS2557_PG1P0_FW_NAME;
 			else
 				break;
-
 			if (pTAS2557->mnSpkType == VENDOR_ID_GOER)
 				pFWName = TAS2557_GOER_FW_NAME;
 			else if (pTAS2557->mnSpkType == VENDOR_ID_AAC)
