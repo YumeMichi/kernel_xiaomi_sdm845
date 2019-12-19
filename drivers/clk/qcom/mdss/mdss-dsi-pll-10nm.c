@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -959,7 +960,7 @@ static int dsi_pll_10nm_lock_status(struct mdss_pll_resources *pll)
 				       ((status & BIT(0)) > 0),
 				       delay_us,
 				       timeout_us);
-	if (rc)
+	if (rc && !pll->handoff_resources)
 		pr_err("DSI PLL(%d) lock failed, status=0x%08x\n",
 			pll->index, status);
 
@@ -1239,11 +1240,16 @@ static unsigned long vco_10nm_recalc_rate(struct clk_hw *hw,
 		return 0;
 	}
 
-	if (!dsi_pll_10nm_lock_status(pll))
-		pll->handoff_resources = true;
+	pll->handoff_resources = true;
+	if (dsi_pll_10nm_lock_status(pll)) {
+		pr_debug("PLL not enabled\n");
+		pll->handoff_resources = false;
+		goto end;
+	}
 
 	(void)mdss_pll_resource_enable(pll, false);
 
+end:
 	return rc;
 }
 
@@ -2195,7 +2201,7 @@ int dsi_pll_clock_register_10nm(struct platform_device *pdev,
 				of_clk_src_onecell_get, clk_data);
 	}
 	if (!rc) {
-		pr_info("Registered DSI PLL ndx=%d, clocks successfully", ndx);
+		pr_info("Registered DSI PLL ndx=%d, clocks successfully\n", ndx);
 
 		return rc;
 	}
