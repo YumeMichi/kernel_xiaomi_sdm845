@@ -68,6 +68,7 @@
 #include "power.h"
 #include "stream.h"
 
+
 MODULE_AUTHOR("Takashi Iwai <tiwai@suse.de>");
 MODULE_DESCRIPTION("USB Audio");
 MODULE_LICENSE("GPL");
