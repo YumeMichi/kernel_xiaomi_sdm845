@@ -25,6 +25,13 @@
 #define CAM_EXT_OPCODE_BASE                     0x200
 #define CAM_CONFIG_DEV_EXTERNAL                 (CAM_EXT_OPCODE_BASE + 0x1)
 
+#ifdef CONFIG_XIAOMI_DIR_CAMERA
+/* camera ir op codes */
+#define CAM_IR_UPDATE                           (CAM_EXT_OPCODE_BASE + 0x2)
+#define CAM_IR_GET_POWER_STATE                  (CAM_EXT_OPCODE_BASE + 0x3)
+#define CAM_IR_LUMA_READ                          (CAM_EXT_OPCODE_BASE + 0x4)
+#endif
+
 /* camera handle type */
 #define CAM_HANDLE_USER_POINTER                 1
 #define CAM_HANDLE_MEM_HANDLE                   2
@@ -625,5 +632,12 @@ struct cam_cmd_mem_regions {
 	uint32_t num_regions;
 	struct cam_cmd_mem_region_info map_info_array[1];
 };
+
+#ifdef CONFIG_XIAOMI_DIR_CAMERA
+struct cam_luma_data {
+	uint32_t        expo;
+	uint32_t        gain;
+};
+#endif
 
 #endif /* __UAPI_CAM_DEFS_H__ */
