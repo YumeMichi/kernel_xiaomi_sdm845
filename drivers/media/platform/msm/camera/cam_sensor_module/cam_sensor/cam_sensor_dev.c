@@ -1,4 +1,5 @@
 /* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -332,11 +333,11 @@ static int32_t cam_sensor_driver_platform_probe(
 #if MV_TEMP_SET
 	/* Store sensor control structure in static database */
 	rc = sysfs_create_file(&(pdev->dev.kobj), &dev_attr_mv_operate_sensor_write_regs.attr);
-	if(rc < 0) {
+	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "can note create ir write sys node rc %d", rc);
 	}
 	rc = sysfs_create_file(&(pdev->dev.kobj), &dev_attr_mv_operate_sensor_read_regs.attr);
-	if(rc < 0) {
+	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "can note create ir read sys node rc %d", rc);
 	}
 #endif

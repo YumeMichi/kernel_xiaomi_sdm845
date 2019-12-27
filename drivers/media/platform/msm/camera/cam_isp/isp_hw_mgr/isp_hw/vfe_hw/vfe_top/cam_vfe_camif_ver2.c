@@ -1,5 +1,5 @@
 /* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
- * Copyright (C) 2018 XiaoMi, Inc.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -196,11 +196,15 @@ static int cam_vfe_camif_resource_deinit(
 
 }
 
+extern uint32_t g_operation_mode;
 static int cam_vfe_camif_resource_start(
 	struct cam_isp_resource_node        *camif_res)
 {
 	struct cam_vfe_mux_camif_data       *rsrc_data;
 	uint32_t                             val = 0;
+	uint32_t                             epoch0_irq_mask;
+	uint32_t                             epoch1_irq_mask;
+	uint32_t                             computed_epoch_line_cfg;
 
 	if (!camif_res) {
 		CAM_ERR(CAM_ISP, "Error! Invalid input arguments");
@@ -240,9 +244,18 @@ static int cam_vfe_camif_resource_start(
 		rsrc_data->common_reg->module_ctrl[
 		CAM_VFE_TOP_VER2_MODULE_STATS]->cgc_ovd);
 
-	/* epoch config with 20 line */
-	cam_io_w_mb(rsrc_data->reg_data->epoch_line_cfg,
+	/* epoch config */
+	epoch0_irq_mask = ((rsrc_data->last_line - rsrc_data->first_line) / 2) +
+		rsrc_data->first_line;
+	epoch1_irq_mask = rsrc_data->reg_data->epoch_line_cfg & 0xFFFF;
+	computed_epoch_line_cfg = (epoch0_irq_mask << 16) | epoch1_irq_mask;
+    if (g_operation_mode == 0 || g_operation_mode == 0x8006)
+        computed_epoch_line_cfg = rsrc_data->reg_data->epoch_line_cfg;
+	cam_io_w_mb(computed_epoch_line_cfg,
 		rsrc_data->mem_base + rsrc_data->camif_reg->epoch_irq);
+	CAM_DBG(CAM_ISP, "first_line:%u last_line:%u epoch_line_cfg: 0x%x",
+		rsrc_data->first_line, rsrc_data->last_line,
+		computed_epoch_line_cfg);
 
 	camif_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 

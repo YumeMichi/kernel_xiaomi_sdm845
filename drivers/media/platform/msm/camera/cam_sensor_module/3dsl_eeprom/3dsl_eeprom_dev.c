@@ -9,7 +9,7 @@
 #include "3dsl_eeprom_soc.h"
 #include "3dsl_eeprom_core.h"
 #include "cam_debug_util.h"
-struct sl_eeprom_ctrl_t       *g_e_ctrl = NULL;
+struct sl_eeprom_ctrl_t       *g_e_ctrl;
 
 /**
  * sl_eeprom_subdev_ioctl - ioctl  func
@@ -276,6 +276,6 @@ module_init(sl_eeprom_driver_init);
 module_exit(sl_eeprom_driver_exit);
 MODULE_DESCRIPTION("3DSL EEPROM driver");
 MODULE_LICENSE("GPL v2");
-MODULE_AUTHOR("xiaomi camera");
+MODULE_AUTHOR("camera");
 MODULE_VERSION("1.0");
 

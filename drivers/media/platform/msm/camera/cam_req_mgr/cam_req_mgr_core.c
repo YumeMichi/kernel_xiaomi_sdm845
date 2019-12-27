@@ -1,4 +1,5 @@
 /* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1863,8 +1864,8 @@ static int cam_req_mgr_cb_notify_err(
 		rc = -EPERM;
 		goto end;
 	}
-	spin_unlock_bh(&link->link_state_spin_lock);
 	crm_timer_reset(link->watchdog);
+	spin_unlock_bh(&link->link_state_spin_lock);
 
 	task = cam_req_mgr_workq_get_task(link->workq);
 	if (!task) {
@@ -1926,8 +1927,8 @@ static int cam_req_mgr_cb_notify_trigger(
 		rc = -EPERM;
 		goto end;
 	}
-	spin_unlock_bh(&link->link_state_spin_lock);
 	crm_timer_reset(link->watchdog);
+	spin_unlock_bh(&link->link_state_spin_lock);
 
 	task = cam_req_mgr_workq_get_task(link->workq);
 	if (!task) {
@@ -2156,6 +2157,8 @@ static int __cam_req_mgr_unlink(struct cam_req_mgr_core_link *link)
 
 	spin_lock_bh(&link->link_state_spin_lock);
 	link->state = CAM_CRM_LINK_STATE_IDLE;
+	/* Destroy timer of link */
+	crm_timer_exit(&link->watchdog);
 	spin_unlock_bh(&link->link_state_spin_lock);
 
 	rc = __cam_req_mgr_disconnect_link(link);
@@ -2164,9 +2167,6 @@ static int __cam_req_mgr_unlink(struct cam_req_mgr_core_link *link)
 			"Unlink for all devices was not successful");
 
 	mutex_lock(&link->lock);
-	/* Destroy timer of link */
-	crm_timer_exit(&link->watchdog);
-
 	/* Destroy workq of link */
 	cam_req_mgr_workq_destroy(&link->workq);
 

@@ -1,5 +1,5 @@
 /* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
- * Copyright (C) 2018 XiaoMi, Inc.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,7 +37,8 @@ int cam_sync_create(int32_t *sync_obj, const char *name)
 	} while (bit);
 
 	spin_lock_bh(&sync_dev->row_spinlocks[idx]);
-	rc = cam_sync_init_object(sync_dev->sync_table, idx, name);
+	rc = cam_sync_init_row(sync_dev->sync_table, idx, name,
+		CAM_SYNC_TYPE_INDV);
 	if (rc) {
 		CAM_ERR(CAM_SYNC, "Error: Unable to init row at idx = %ld",
 			idx);
@@ -47,6 +48,7 @@ int cam_sync_create(int32_t *sync_obj, const char *name)
 	}
 
 	*sync_obj = idx;
+	CAM_DBG(CAM_SYNC, "sync_obj: %i", *sync_obj);
 	spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
 
 	return rc;
@@ -164,26 +166,30 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 	struct list_head sync_list;
 	struct cam_signalable_info *list_info = NULL;
 	struct cam_signalable_info *temp_list_info = NULL;
+	struct list_head parents_list;
 
 	/* Objects to be signaled will be added into this list */
 	INIT_LIST_HEAD(&sync_list);
 
 	if (sync_obj >= CAM_SYNC_MAX_OBJS || sync_obj <= 0) {
-		CAM_ERR(CAM_SYNC, "Error: Out of range sync obj");
+		CAM_ERR(CAM_SYNC, "Error: Out of range sync obj (0 <= %d < %d)",
+			sync_obj, CAM_SYNC_MAX_OBJS);
 		return -EINVAL;
 	}
 	row = sync_dev->sync_table + sync_obj;
+	spin_lock_bh(&sync_dev->row_spinlocks[sync_obj]);
 	if (row->state == CAM_SYNC_STATE_INVALID) {
+		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
 		CAM_ERR(CAM_SYNC,
 			"Error: accessing an uninitialized sync obj = %d",
 			sync_obj);
 		return -EINVAL;
 	}
 
-	spin_lock_bh(&sync_dev->row_spinlocks[sync_obj]);
 	if (row->type == CAM_SYNC_TYPE_GROUP) {
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
-		CAM_ERR(CAM_SYNC, "Error: Signaling a GROUP sync object = %d",
+		CAM_ERR(CAM_SYNC,
+			"Error: Signaling a GROUP sync object = %d",
 			sync_obj);
 		return -EINVAL;
 	}
@@ -215,20 +221,36 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 		return rc;
 	}
 
+	/* copy parent list to local and release child lock */
+	INIT_LIST_HEAD(&parents_list);
+	list_splice_init(&row->parents_list, &parents_list);
+	spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
+
+	if (list_empty(&parents_list))
+		goto dispatch_cb;
+
 	/*
 	 * Now iterate over all parents of this object and if they too need to
 	 * be signaled add them to the list
 	 */
 	list_for_each_entry(parent_info,
-		&row->parents_list,
+		&parents_list,
 		list) {
 		parent_row = sync_dev->sync_table + parent_info->sync_id;
 		spin_lock_bh(&sync_dev->row_spinlocks[parent_info->sync_id]);
 		parent_row->remaining--;
 
-		parent_row->state = cam_sync_util_get_state(
-			parent_row->state,
+		rc = cam_sync_util_update_parent_state(
+			parent_row,
 			status);
+		if (rc) {
+			CAM_ERR(CAM_SYNC, "Invalid parent state %d",
+				parent_row->state);
+			spin_unlock_bh(
+				&sync_dev->row_spinlocks[parent_info->sync_id]);
+			kfree(parent_info);
+			continue;
+		}
 
 		if (!parent_row->remaining) {
 			rc = cam_sync_util_add_to_signalable_list
@@ -239,15 +261,13 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 				spin_unlock_bh(
 					&sync_dev->row_spinlocks[
 						parent_info->sync_id]);
-				spin_unlock_bh(
-					&sync_dev->row_spinlocks[sync_obj]);
-				return rc;
+				continue;
 			}
 		}
 		spin_unlock_bh(&sync_dev->row_spinlocks[parent_info->sync_id]);
 	}
 
-	spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
+dispatch_cb:
 
 	/*
 	 * Now dispatch the various sync objects collected so far, in our
@@ -323,38 +343,28 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 
 int cam_sync_merge(int32_t *sync_obj, uint32_t num_objs, int32_t *merged_obj)
 {
-	int rc = 0;
+	int rc;
 	long idx = 0;
 	bool bit;
-	int i = 0;
 
 	if (!sync_obj || !merged_obj) {
 		CAM_ERR(CAM_SYNC, "Invalid pointer(s)");
 		return -EINVAL;
 	}
 
-	rc = cam_sync_util_validate_merge(sync_obj,
-		num_objs);
-	if (rc < 0) {
-		CAM_ERR(CAM_SYNC, "Validation failed, Merge not allowed");
+	if (num_objs <= 1) {
+		CAM_ERR(CAM_SYNC, "Single object merge is not allowed");
 		return -EINVAL;
-	}
-
-	for (i = 0; i < num_objs; i++) {
-		spin_lock_bh(&sync_dev->row_spinlocks[sync_obj[i]]);
 	}
 
 	do {
 		idx = find_first_zero_bit(sync_dev->bitmap, CAM_SYNC_MAX_OBJS);
-		if (idx >= CAM_SYNC_MAX_OBJS) {
-			rc = -ENOMEM;
-			goto failure;
-		}
+		if (idx >= CAM_SYNC_MAX_OBJS)
+			return -ENOMEM;
 		bit = test_and_set_bit(idx, sync_dev->bitmap);
 	} while (bit);
 
 	spin_lock_bh(&sync_dev->row_spinlocks[idx]);
-
 	rc = cam_sync_init_group_object(sync_dev->sync_table,
 		idx, sync_obj,
 		num_objs);
@@ -363,22 +373,18 @@ int cam_sync_merge(int32_t *sync_obj, uint32_t num_objs, int32_t *merged_obj)
 			idx);
 		clear_bit(idx, sync_dev->bitmap);
 		spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
-		rc = -EINVAL;
-		goto failure;
+		return -EINVAL;
 	}
 	CAM_DBG(CAM_SYNC, "Init row at idx:%ld to merge objects", idx);
 	*merged_obj = idx;
 	spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
 
-failure:
-	for (i = 0; i < num_objs; i++) {
-		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj[i]]);
-	}
-	return rc;
+	return 0;
 }
 
 int cam_sync_destroy(int32_t sync_obj)
 {
+	CAM_DBG(CAM_SYNC, "sync_obj: %i", sync_obj);
 	return cam_sync_deinit_object(sync_dev->sync_table, sync_obj);
 }
 
