@@ -32,7 +32,7 @@ CLANG_FLAGS="CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-ob
 
 # Kernel Details
 DEFCONFIG="dipper_user_defconfig"
-VER="-Qbeta+"
+VER="-QR1"
 
 # Paths
 KERNEL_DIR=`pwd`
