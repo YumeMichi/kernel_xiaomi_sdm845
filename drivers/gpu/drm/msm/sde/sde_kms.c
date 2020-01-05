@@ -391,7 +391,6 @@ static void _sde_debugfs_destroy(struct sde_kms *sde_kms)
 
 static int sde_kms_enable_vblank(struct msm_kms *kms, struct drm_crtc *crtc)
 {
-	int ret = 0;
 	struct sde_kms *sde_kms;
 	struct msm_drm_private *priv;
 	struct sde_crtc *sde_crtc;
