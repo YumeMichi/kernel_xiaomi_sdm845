@@ -2062,8 +2062,11 @@ static long ipa3_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case IPA_IOC_GET_PHERIPHERAL_EP_INFO:
 		IPADBG("Got IPA_IOC_GET_EP_INFO\n");
-		if (ipa3_ctx->ipa_config_is_auto == false)
-			return -ENOTTY;
+		if (ipa3_ctx->ipa_config_is_auto == false) {
+			IPADBG("not an auto config: returning error\n");
+			retval = -ENOTTY;
+			break;
+		}
 		if (copy_from_user(&ep_info, (const void __user *)arg,
 			sizeof(struct ipa_ioc_get_ep_info))) {
 			IPAERR_RL("copy_from_user fails\n");
@@ -5143,10 +5146,6 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 
 	IPADBG("user input string %s\n", dbg_buff);
 
-	/* Prevent consequent calls from trying to load the FW again. */
-	if (ipa3_is_ready())
-		return count;
-
 	/* Check MHI configuration on MDM devices */
 	if (!ipa3_is_msm_device()) {
 
@@ -5185,6 +5184,10 @@ static ssize_t ipa3_write(struct file *file, const char __user *buf,
 			return count;
 		}
 	}
+
+	/* Prevent consequent calls from trying to load the FW again. */
+	if (ipa3_is_ready())
+		return count;
 
 	/* Prevent multiple calls from trying to load the FW again. */
 	if (ipa3_ctx->fw_loaded) {
