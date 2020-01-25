@@ -65,9 +65,7 @@ function make_zip {
     git clean -fdx > /dev/null 2>&1
     git checkout EAS
 
-    mkdir -p {kernel,dtbs}
-    cp -vr $ZIMAGE_DIR/Image.gz $AK_DIR/kernel/Image.gz
-    find $ZIMAGE_DIR -name '*.dtb' -exec cp {} dtbs/ \;
+    cp -vr $ZIMAGE_DIR/Image.gz-dtb $AK_DIR/Image.gz-dtb
 
     AK_FULL_VER=$AK_VER-$(date +%F | sed s@-@@g)-dipper
 
