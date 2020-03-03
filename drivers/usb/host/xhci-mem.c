@@ -1542,10 +1542,6 @@ int xhci_endpoint_init(struct xhci_hcd *xhci,
 		}
 	}
 
-	if (usb_endpoint_xfer_bulk(&ep->desc) && udev->speed == USB_SPEED_FULL
-				&& max_packet < 8)
-		max_packet = 8;
-
 	/* xHCI 1.0 and 1.1 indicates that ctrl ep avg TRB Length should be 8 */
 	if (usb_endpoint_xfer_control(&ep->desc) && xhci->hci_version >= 0x100)
 		avg_trb_len = 8;
