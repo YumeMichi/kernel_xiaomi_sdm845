@@ -11,17 +11,17 @@ clear
 # Number of parallel jobs to run
 THREAD="-j$(nproc)"
 
-# Proton Clang build (version + ISO 8601 date)
-proton_clang_build="11.0.0-20200117"
+# Proton Clang
+CLANG_PATH="$HOME/Workspace/toolchains/proton-clang"
 
 # Path to executables in Clang toolchain
-CLANG_BIN="$HOME/Workspace/toolchains/proton_clang-$proton_clang_build/bin"
+CLANG_BIN="$CLANG_PATH/bin"
 
 # 64-bit GCC toolchain prefix
-GCC64_PREFIX="$HOME/Workspace/toolchains/proton_clang-$proton_clang_build/bin/aarch64-linux-gnu-"
+GCC64_PREFIX="$CLANG_BIN/aarch64-linux-gnu-"
 
 # 32-bit GCC toolchain prefix
-GCC32_PREFIX="$HOME/Workspace/toolchains/proton_clang-$proton_clang_build/bin/arm-linux-gnueabi-"
+GCC32_PREFIX="$CLANG_BIN/arm-linux-gnueabi-"
 
 # Setup variables
 export LD_LIBRARY_PATH="$CLANG_BIN/../lib:$CLANG_BIN/../lib64:$LD_LIBRARY_PATH"
