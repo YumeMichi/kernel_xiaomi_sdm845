@@ -11,17 +11,24 @@ clear
 # Number of parallel jobs to run
 THREAD="-j$(nproc)"
 
+# Toolchains
+TOOLCHAINS_PATH="$HOME/Workspace/toolchains"
+
 # Proton Clang
-CLANG_PATH="$HOME/Workspace/toolchains/proton-clang"
+CLANG_PATH="$TOOLCHAINS_PATH/proton-clang"
+
+# arter97's GCC
+GCC64_PATH="$TOOLCHAINS_PATH/aarch64-elf"
+GCC32_PATH="$TOOLCHAINS_PATH/arm-eabi"
 
 # Path to executables in Clang toolchain
 CLANG_BIN="$CLANG_PATH/bin"
 
 # 64-bit GCC toolchain prefix
-GCC64_PREFIX="$CLANG_BIN/aarch64-linux-gnu-"
+GCC64_PREFIX="$GCC64_PATH/bin/aarch64-elf-"
 
 # 32-bit GCC toolchain prefix
-GCC32_PREFIX="$CLANG_BIN/arm-linux-gnueabi-"
+GCC32_PREFIX="$GCC32_PATH/bin/arm-eabi-"
 
 # Setup variables
 export LD_LIBRARY_PATH="$CLANG_BIN/../lib:$CLANG_BIN/../lib64:$LD_LIBRARY_PATH"
