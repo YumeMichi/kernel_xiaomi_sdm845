@@ -34,6 +34,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/blk-cgroup.h>
 #include <linux/mi_io.h>
+#include <linux/psi.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/block.h>
@@ -2105,6 +2106,9 @@ blk_qc_t submit_bio(struct bio *bio)
 	u64 s_running_time, s_runnable_time;
 	unsigned long s_total_time;
 	unsigned int delta;
+	bool workingset_read = false;
+	unsigned long pflags;
+
 	/*
 	 * If it's a regular read/write or a barrier with data attached,
 	 * go through the normal accounting stuff before submission.
@@ -2120,6 +2124,8 @@ blk_qc_t submit_bio(struct bio *bio)
 		if (op_is_write(bio_op(bio))) {
 			count_vm_events(PGPGOUT, count);
 		} else {
+			if (bio_flagged(bio, BIO_WORKINGSET))
+				workingset_read = true;
 			task_io_account_read(bio->bi_iter.bi_size);
 			count_vm_events(PGPGIN, count);
 		}
@@ -2138,7 +2144,21 @@ blk_qc_t submit_bio(struct bio *bio)
 	s_total_time = jiffies;
 	s_running_time = current->se.sum_exec_runtime;
 	s_runnable_time = current->sched_info.run_delay;
+
+	/*
+	 * If we're reading data that is part of the userspace
+	 * workingset, count submission time as memory stall. When the
+	 * device is congested, or the submitting cgroup IO-throttled,
+	 * submission can be a significant part of overall IO time.
+	 */
+	if (workingset_read)
+		psi_memstall_enter(&pflags);
+
 	ret = generic_make_request(bio);
+
+	if (workingset_read)
+		psi_memstall_leave(&pflags);
+
 	if (IO_SHOW_LOG) {
 		delta = jiffies_to_msecs(jiffies - s_total_time);
 		if (delta > IO_BLK_SUBMIT_BIO_LEVEL) {
