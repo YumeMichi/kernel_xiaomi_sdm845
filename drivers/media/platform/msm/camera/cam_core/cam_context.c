@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -478,7 +478,12 @@ int cam_context_deinit(struct cam_context *ctx)
 
 void cam_context_putref(struct cam_context *ctx)
 {
-	kref_put(&ctx->refcount, cam_node_put_ctxt_to_free_list);
+	if (atomic_read(&(ctx->refcount.refcount)))
+		kref_put(&ctx->refcount, cam_node_put_ctxt_to_free_list);
+	else
+		WARN(1, "ctx %s %d state %d devhdl %X\n", ctx->dev_name,
+			ctx->ctx_id, ctx->state, ctx->dev_hdl);
+
 	CAM_DBG(CAM_CORE,
 		"ctx device hdl %ld, ref count %d, dev_name %s",
 		ctx->dev_hdl, atomic_read(&(ctx->refcount.refcount)),
