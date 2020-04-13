@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, 2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -355,17 +355,6 @@ int32_t cam_context_prepare_dev_to_hw(struct cam_context *ctx,
 			CAM_INFO(CAM_CTXT,
 				"[%s][%d] : Moving req[%llu] from free_list to pending_list",
 				ctx->dev_name, ctx->ctx_id, req->request_id);
-
-		for (i = 0; i < req->num_in_map_entries; i++) {
-			rc = cam_sync_check_valid(
-				req->in_map_entries[i].sync_id);
-			if (rc) {
-				CAM_ERR(CAM_CTXT,
-					"invalid in map sync object %d",
-					req->in_map_entries[i].sync_id);
-				goto put_ref;
-			}
-		}
 
 		for (i = 0; i < req->num_in_map_entries; i++) {
 			cam_context_getref(ctx);
