@@ -47,12 +47,6 @@
 	};
 };
 
-&soc {
-	restart@10ac000 {
-		qcom,force-warm-reboot;
-	};
-};
-
 &red_led {
 	linux,name = "white";
 	qcom,start-idx = <1>;
