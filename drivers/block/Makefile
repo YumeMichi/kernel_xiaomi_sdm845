@@ -39,6 +39,9 @@ obj-$(CONFIG_BLK_DEV_RBD)     += rbd.o
 obj-$(CONFIG_BLK_DEV_PCIESSD_MTIP32XX)	+= mtip32xx/
 
 obj-$(CONFIG_BLK_DEV_RSXX) += rsxx/
+
+obj-$(CONFIG_VBSWAP) += vbswap/
+
 obj-$(CONFIG_BLK_DEV_NULL_BLK)	+= null_blk.o
 
 skd-y		:= skd_main.o
