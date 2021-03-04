@@ -32,6 +32,8 @@ lib-$(CONFIG_HAS_DMA) += dma-noop.o
 lib-y	+= kobject.o klist.o
 obj-y	+= lockref.o
 
+KASAN_SANITIZE_find_bit.o := n
+
 obj-y += bcd.o div64.o sort.o parser.o halfmd4.o debug_locks.o random32.o \
 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
 	 gcd.o lcm.o list_sort.o uuid.o flex_array.o iov_iter.o clz_ctz.o \
@@ -237,3 +239,4 @@ KASAN_SANITIZE_ubsan.o := n
 CFLAGS_ubsan.o := $(call cc-option, -fno-stack-protector) $(DISABLE_STACKLEAK_PLUGIN)
 
 obj-$(CONFIG_SBITMAP) += sbitmap.o
+obj-$(CONFIG_QMI_ENCDEC) += qmi_encdec.o

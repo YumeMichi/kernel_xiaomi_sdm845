@@ -19,6 +19,7 @@
 #include <linux/debugfs.h>
 
 #include "sched.h"
+#include "walt.h"
 
 static DEFINE_SPINLOCK(sched_debug_lock);
 
@@ -597,6 +598,8 @@ void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
 			cfs_rq->throttled);
 	SEQ_printf(m, "  .%-30s: %d\n", "throttle_count",
 			cfs_rq->throttle_count);
+	SEQ_printf(m, "  .%-30s: %d\n", "runtime_enabled",
+			cfs_rq->runtime_enabled);
 #endif
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -685,6 +688,23 @@ do {									\
 	P(cpu_load[2]);
 	P(cpu_load[3]);
 	P(cpu_load[4]);
+#ifdef CONFIG_SMP
+	P(cpu_capacity);
+#endif
+#ifdef CONFIG_SCHED_WALT
+	P(cluster->load_scale_factor);
+	P(cluster->capacity);
+	P(cluster->max_possible_capacity);
+	P(cluster->efficiency);
+	P(cluster->cur_freq);
+	P(cluster->max_freq);
+	P(cluster->exec_scale_factor);
+#ifdef CONFIG_SCHED_WALT
+	P(walt_stats.nr_big_tasks);
+#endif
+	SEQ_printf(m, "  .%-30s: %llu\n", "walt_stats.cumulative_runnable_avg",
+			rq->walt_stats.cumulative_runnable_avg);
+#endif
 #undef P
 #undef PN
 
@@ -763,6 +783,12 @@ static void sched_debug_header(struct seq_file *m)
 	PN(sysctl_sched_wakeup_granularity);
 	P(sysctl_sched_child_runs_first);
 	P(sysctl_sched_features);
+#ifdef CONFIG_SCHED_WALT
+	P(min_capacity);
+	P(max_capacity);
+	P(sched_ravg_window);
+	P(sched_load_granule);
+#endif
 #undef PN
 #undef P
 
@@ -1008,6 +1034,9 @@ void proc_sched_show_task(struct task_struct *p, struct seq_file *m)
 		P_SCHEDSTAT(se.statistics.nr_wakeups_cas_attempts);
 		P_SCHEDSTAT(se.statistics.nr_wakeups_cas_count);
  
+#ifdef CONFIG_SCHED_WALT
+		P(ravg.demand);
+#endif
 		avg_atom = p->se.sum_exec_runtime;
 		if (nr_switches)
 			avg_atom = div64_ul(avg_atom, nr_switches);

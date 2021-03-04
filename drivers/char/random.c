@@ -2111,8 +2111,8 @@ struct ctl_table random_table[] = {
 
 struct batched_entropy {
 	union {
-		unsigned long entropy_long[CHACHA_BLOCK_SIZE / sizeof(unsigned long)];
-		unsigned int entropy_int[CHACHA_BLOCK_SIZE / sizeof(unsigned int)];
+		u64 entropy_u64[CHACHA_BLOCK_SIZE / sizeof(u64)];
+		u32 entropy_u32[CHACHA_BLOCK_SIZE / sizeof(u32)];
 	};
 	unsigned int position;
 };
@@ -2122,46 +2122,51 @@ struct batched_entropy {
  * number is good as /dev/urandom, but there is no backtrack protection, with
  * the goal of being quite fast and not depleting entropy.
  */
-static DEFINE_PER_CPU(struct batched_entropy, batched_entropy_long);
-unsigned long get_random_long(void)
+static DEFINE_PER_CPU(struct batched_entropy, batched_entropy_u64);
+u64 get_random_u64(void)
 {
-	unsigned long ret;
+	u64 ret;
 	struct batched_entropy *batch;
 
-	batch = &get_cpu_var(batched_entropy_long);
-	if (batch->position % ARRAY_SIZE(batch->entropy_long) == 0) {
-		extract_crng((u8 *)batch->entropy_long);
-		batch->position = 0;
-	}
-	ret = batch->entropy_long[batch->position++];
-	put_cpu_var(batched_entropy_long);
-	return ret;
-}
-EXPORT_SYMBOL(get_random_long);
-
-#if BITS_PER_LONG == 32
-unsigned int get_random_int(void)
-{
-	return get_random_long();
-}
+#if BITS_PER_LONG == 64
+	if (arch_get_random_long((unsigned long *)&ret))
+		return ret;
 #else
-static DEFINE_PER_CPU(struct batched_entropy, batched_entropy_int);
-unsigned int get_random_int(void)
-{
-	unsigned int ret;
-	struct batched_entropy *batch;
+	if (arch_get_random_long((unsigned long *)&ret) &&
+	    arch_get_random_long((unsigned long *)&ret + 1))
+	    return ret;
+#endif
 
-	batch = &get_cpu_var(batched_entropy_int);
-	if (batch->position % ARRAY_SIZE(batch->entropy_int) == 0) {
-		extract_crng((u8 *)batch->entropy_int);
+	batch = &get_cpu_var(batched_entropy_u64);
+	if (batch->position % ARRAY_SIZE(batch->entropy_u64) == 0) {
+		extract_crng((u8 *)batch->entropy_u64);
 		batch->position = 0;
 	}
-	ret = batch->entropy_int[batch->position++];
-	put_cpu_var(batched_entropy_int);
+	ret = batch->entropy_u64[batch->position++];
+	put_cpu_var(batched_entropy_u64);
 	return ret;
 }
-#endif
-EXPORT_SYMBOL(get_random_int);
+EXPORT_SYMBOL(get_random_u64);
+
+static DEFINE_PER_CPU(struct batched_entropy, batched_entropy_u32);
+u32 get_random_u32(void)
+{
+	u32 ret;
+	struct batched_entropy *batch;
+
+	if (arch_get_random_int(&ret))
+		return ret;
+
+	batch = &get_cpu_var(batched_entropy_u32);
+	if (batch->position % ARRAY_SIZE(batch->entropy_u32) == 0) {
+		extract_crng((u8 *)batch->entropy_u32);
+		batch->position = 0;
+	}
+	ret = batch->entropy_u32[batch->position++];
+	put_cpu_var(batched_entropy_u32);
+	return ret;
+}
+EXPORT_SYMBOL(get_random_u32);
 
 /**
  * randomize_page - Generate a random, page aligned address
