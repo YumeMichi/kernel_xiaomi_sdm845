@@ -1222,7 +1222,7 @@ static inline int _wait_for_room_in_context_queue(
 		 * while we were sleeping
 		 */
 
-		if (ret >= 1) {
+		if (ret > 0) {
 			ret = _check_context_state(&drawctxt->base);
 			if (ret)
 				return ret;
